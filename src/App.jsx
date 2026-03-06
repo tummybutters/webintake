@@ -35,7 +35,7 @@ function SuccessPage() {
                 </p>
 
                 <div className="success-divider" />
-                <p className="success-fine">Malohn Capital — Professional 1-Page Business Website</p>
+                <p className="success-fine">Malohn Capital — Professional 1-Page Website · 3 months free hosting included</p>
             </motion.div>
         </div>
     );
@@ -422,7 +422,7 @@ function QuizApp() {
                                 disabled={loading}
                                 className={`nav-next${loading ? ' nav-loading' : ''}`}
                             >
-                                {loading ? 'Redirecting...' : isLastStep ? 'Start Free Trial →' : 'Continue →'}
+                                {loading ? 'Redirecting...' : isLastStep ? 'Get My Website →' : 'Continue →'}
                             </button>
                         </div>
                     </motion.div>
