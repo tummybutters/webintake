@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Check, LayoutTemplate, Upload } from 'lucide-react';
-import { templates } from '../data/templates';
+import { Check, Upload } from 'lucide-react';
 
 const STRIPE_PAYMENT_LINK = 'https://buy.stripe.com/4gMeVcbaLbU63cD0005AQ01';
 const INTAKE_API_URL = '/api/intake';
@@ -63,8 +62,10 @@ function SpectrumPicker({ fieldName, label, onChange }) {
   const [val, setVal] = useState(35);
   const gradRef = useRef(null);
   const hueRef = useRef(null);
+  const valRef = useRef(null);
   const isDraggingGrad = useRef(false);
   const isDraggingHue = useRef(false);
+  const isDraggingVal = useRef(false);
 
   const hex = hsvToHex(hue, sat, val);
 
@@ -88,16 +89,25 @@ function SpectrumPicker({ fieldName, label, onChange }) {
     setHue(Math.round(x * 360));
   }, []);
 
+  const updateVal = useCallback((clientX) => {
+    const rect = valRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const x = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    setVal(Math.round(x * 100));
+  }, []);
+
   useEffect(() => {
     const onMove = (event) => {
       const cx = event.touches ? event.touches[0].clientX : event.clientX;
       const cy = event.touches ? event.touches[0].clientY : event.clientY;
       if (isDraggingGrad.current) updateGrad(cx, cy);
       if (isDraggingHue.current) updateHue(cx);
+      if (isDraggingVal.current) updateVal(cx);
     };
     const onUp = () => {
       isDraggingGrad.current = false;
       isDraggingHue.current = false;
+      isDraggingVal.current = false;
     };
 
     window.addEventListener('mousemove', onMove);
@@ -111,7 +121,7 @@ function SpectrumPicker({ fieldName, label, onChange }) {
       window.removeEventListener('touchmove', onMove);
       window.removeEventListener('touchend', onUp);
     };
-  }, [updateGrad, updateHue]);
+  }, [updateGrad, updateHue, updateVal]);
 
   return (
     <div className="spectrum-picker">
@@ -153,6 +163,23 @@ function SpectrumPicker({ fieldName, label, onChange }) {
         }}
       >
         <div className="hue-cursor" style={{ left: `${(hue / 360) * 100}%` }} />
+      </div>
+
+      <div
+        ref={valRef}
+        className="val-strip"
+        style={{ background: `linear-gradient(90deg, #000, hsl(${hue}, 100%, 50%))` }}
+        onMouseDown={(event) => {
+          isDraggingVal.current = true;
+          updateVal(event.clientX);
+          event.preventDefault();
+        }}
+        onTouchStart={(event) => {
+          isDraggingVal.current = true;
+          updateVal(event.touches[0].clientX);
+        }}
+      >
+        <div className="hue-cursor" style={{ left: `${val}%` }} />
       </div>
 
       <div className="color-readout">
@@ -202,48 +229,51 @@ function ColorsStep({ formData, updateFormData }) {
   );
 }
 
-function TemplateSelectionStep({ selectedTemplate, updateFormData }) {
+const TEMPLATES = [
+  { id: '1', name: 'Obsidian', desc: 'Dark luxury', url: '/preview/1' },
+  { id: '2', name: 'Clearfield', desc: 'Clean & light', url: '/preview/2' },
+  { id: '3', name: 'Summit', desc: 'Bold modern', url: '/preview/3' },
+  { id: '4', name: 'Ashford', desc: 'Warm classic', url: '/preview/4' },
+];
+
+function TemplateStep({ formData, updateFormData }) {
   return (
-    <div className="intake-template-step">
-      <div className="intake-template-grid">
-        {templates.map((template) => (
-          <article
-            key={template.slug}
-            className={`intake-template-card${selectedTemplate === template.slug ? ' intake-template-card-selected' : ''}`}
-          >
-            <div className="intake-template-preview">
-              <iframe title={`${template.name} preview`} src={`${template.route}?embed=1`} loading="lazy" />
+    <div className="template-grid">
+      {TEMPLATES.map((t) => (
+        <div
+          key={t.id}
+          className={`template-card${formData.templateId === t.id ? ' template-selected' : ''}`}
+          onClick={() => updateFormData('templateId', t.id)}
+        >
+          <div className="template-preview-wrap">
+            <iframe
+              src={t.url}
+              scrolling="no"
+              title={t.name}
+              className="template-iframe"
+            />
+            <div className="template-overlay" />
+            {formData.templateId === t.id && (
+              <div className="template-check">✓</div>
+            )}
+          </div>
+          <div className="template-card-footer">
+            <div>
+              <span className="template-name">{t.name}</span>
+              <span className="template-desc">{t.desc}</span>
             </div>
-
-            <div className="intake-template-copy">
-              <div className="intake-template-topline">
-                <span>{template.label}</span>
-                <span>{template.tagline}</span>
-              </div>
-              <strong>{template.name}</strong>
-              <p>{template.summary}</p>
-
-              <div className="intake-template-actions">
-                <a
-                  href={template.route}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="intake-template-link"
-                >
-                  Open in separate tab
-                </a>
-                <button
-                  type="button"
-                  className={`intake-template-select${selectedTemplate === template.slug ? ' intake-template-select-active' : ''}`}
-                  onClick={() => updateFormData('selectedTemplate', template.slug)}
-                >
-                  {selectedTemplate === template.slug ? 'Selected' : 'Choose template'}
-                </button>
-              </div>
-            </div>
-          </article>
-        ))}
-      </div>
+            <a
+              href={t.url}
+              target="_blank"
+              rel="noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="template-open"
+            >
+              View ↗
+            </a>
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
@@ -297,9 +327,9 @@ const steps = [
     fields: [],
   },
   {
-    id: 'templates',
-    title: 'Template Preview',
-    description: 'Review the four live templates below. Click any preview to open the full page in a separate tab.',
+    id: 'template',
+    title: 'Choose a Design',
+    description: 'Select a layout. Click a preview to select it, or open full size in a new tab.',
     fields: [],
   },
   {
@@ -343,6 +373,19 @@ export default function IntakeApp() {
   const [submitError, setSubmitError] = useState('');
   const [stepError, setStepError] = useState('');
 
+  const handleNextRef = useRef(null);
+  const loadingRef = useRef(false);
+  loadingRef.current = loading;
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (e.key !== 'Enter' || e.target.tagName === 'TEXTAREA' || loadingRef.current) return;
+      handleNextRef.current?.();
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
+
   const currentStep = steps[currentStepIdx];
   const progress = ((currentStepIdx + 1) / steps.length) * 100;
   const isLastStep = currentStepIdx === steps.length - 1;
@@ -363,7 +406,6 @@ export default function IntakeApp() {
       primaryColor: formData.primaryColor || '',
       secondaryColor: formData.secondaryColor || '',
       preferredContact: formData.preferredContact || '',
-      selectedTemplate: formData.selectedTemplate || '',
       logoFileName: formData.logo?.name || '',
       submittedAt: new Date().toISOString(),
     };
@@ -397,11 +439,6 @@ export default function IntakeApp() {
   };
 
   const handleNext = async () => {
-    if (currentStep.id === 'templates' && !formData.selectedTemplate) {
-      setStepError('Choose one template before continuing.');
-      return;
-    }
-
     if (!isLastStep) {
       setStepError('');
       setDirection(1);
@@ -434,11 +471,10 @@ export default function IntakeApp() {
   };
 
   const updateFormData = useCallback((name, value) => {
-    if (name === 'selectedTemplate') {
-      setStepError('');
-    }
     setFormData((prev) => ({ ...prev, [name]: value }));
   }, []);
+
+  handleNextRef.current = handleNext;
 
   return (
     <div className="root-wrapper">
@@ -467,11 +503,6 @@ export default function IntakeApp() {
           />
         </div>
 
-        <a href="/templates" className="template-chooser-link">
-          <LayoutTemplate size={15} />
-          Browse live templates
-        </a>
-
         <AnimatePresence mode="wait" custom={direction}>
           <motion.div
             key={currentStep.id}
@@ -482,6 +513,7 @@ export default function IntakeApp() {
             transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
             className="intake-step-content"
           >
+            <div className="step-body">
             <div>
               <p className="step-label-tag">{currentStep.id}</p>
               <h1 className="step-title">{currentStep.title}</h1>
@@ -490,11 +522,8 @@ export default function IntakeApp() {
 
             {currentStep.id === 'colors' ? (
               <ColorsStep formData={formData} updateFormData={updateFormData} />
-            ) : currentStep.id === 'templates' ? (
-              <TemplateSelectionStep
-                selectedTemplate={formData.selectedTemplate}
-                updateFormData={updateFormData}
-              />
+            ) : currentStep.id === 'template' ? (
+              <TemplateStep formData={formData} updateFormData={updateFormData} />
             ) : (
               <div className="fields-container">
                 {currentStep.fields.map((field) => (
@@ -559,6 +588,7 @@ export default function IntakeApp() {
                 ))}
               </div>
             )}
+            </div>
 
             <div className="nav-row">
               <button
