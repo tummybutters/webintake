@@ -5,9 +5,9 @@ export const templates = [
     variant: 'northline',
     label: 'Template I',
     name: 'Northline Capital',
-    tagline: 'Editorial dark luxury',
+    tagline: 'Dark minimal',
     summary:
-      'A dark, restrained template with crisp credibility cues for capital, acquisition, and advisory firms.',
+      'A simple dark template with strong spacing and straightforward credibility cues.',
     heroEyebrow: 'Strategic Capital Advisory',
     heroTitle: 'Position your firm with quiet confidence and investor-ready clarity.',
     heroBody:
@@ -72,9 +72,9 @@ export const templates = [
     variant: 'alder',
     label: 'Template II',
     name: 'Alder Crest Advisory',
-    tagline: 'Warm light executive',
+    tagline: 'Warm editorial',
     summary:
-      'A lighter, more welcoming template with understated luxury for relationship-led firms and real estate operators.',
+      'A lighter template with softer contrast and a more approachable business tone.',
     heroEyebrow: 'Private Advisory Group',
     heroTitle: 'A refined front door for capital conversations, acquisitions, and strategic growth.',
     heroBody:
@@ -139,9 +139,9 @@ export const templates = [
     variant: 'meridian',
     label: 'Template III',
     name: 'Meridian Reserve',
-    tagline: 'Cinematic copper',
+    tagline: 'Bold structured',
     summary:
-      'A bold, high-contrast concept with richer motion and a sharper edge for firms that want a more modern premium feel.',
+      'A cleaner high-contrast option with stronger typography and a more modern feel.',
     heroEyebrow: 'Selective Opportunity Platform',
     heroTitle: 'Modern presentation for firms operating at the intersection of capital, property, and execution.',
     heroBody:
@@ -206,9 +206,9 @@ export const templates = [
     variant: 'harbor',
     label: 'Template IV',
     name: 'Harbor Peak Group',
-    tagline: 'Coastal navy minimal',
+    tagline: 'Classic navy',
     summary:
-      'A calm, spacious template with polished blue tones for firms that want stability, clarity, and a more classic premium tone.',
+      'A calm navy-and-stone layout built for clarity, trust, and a more traditional look.',
     heroEyebrow: 'Advisory • Capital • Opportunity',
     heroTitle: 'A stable, premium framework for firms that need to look real, responsive, and well organized.',
     heroBody:

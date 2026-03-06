@@ -326,6 +326,14 @@ const steps = [
 
 export default function IntakeApp() {
   const isSuccess = new URLSearchParams(window.location.search).get('success') === 'true';
+
+  useEffect(() => {
+    document.body.classList.add('body-intake-lock');
+    return () => {
+      document.body.classList.remove('body-intake-lock');
+    };
+  }, []);
+
   if (isSuccess) return <SuccessPage />;
 
   const [currentStepIdx, setCurrentStepIdx] = useState(0);
@@ -472,6 +480,7 @@ export default function IntakeApp() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: direction > 0 ? -18 : 18 }}
             transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+            className="intake-step-content"
           >
             <div>
               <p className="step-label-tag">{currentStep.id}</p>
