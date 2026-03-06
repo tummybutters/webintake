@@ -42,7 +42,7 @@ function SuccessPage() {
                 </p>
 
                 <div className="success-divider" />
-                <p className="success-fine">Malohn Capital — Professional 1-Page Website · 3 months free hosting included</p>
+                <p className="success-fine">Professional 1-Page Website · 3 months free hosting included</p>
             </motion.div>
         </div>
     );
@@ -380,7 +380,7 @@ function QuizApp() {
                 <span className="corner corner-br" />
 
                 <div className="card-header">
-                    <span className="brand-label">Malohn Capital</span>
+                    <span className="brand-label">Website Intake</span>
                     <span className="step-counter">
                         <span className="step-current">{String(currentStepIdx + 1).padStart(2, '0')}</span>
                         <span className="step-sep"> / </span>
