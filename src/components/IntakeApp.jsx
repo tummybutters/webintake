@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Check, Upload } from 'lucide-react';
 
-const STRIPE_PAYMENT_LINK = 'https://buy.stripe.com/4gMeVcbaLbU63cD0005AQ01';
 const INTAKE_API_URL = '/api/intake';
 const INTAKE_TIMEOUT_MS = 5000;
 const INTAKE_RETRY_DELAY_MS = 400;
@@ -48,11 +47,36 @@ function SuccessPage() {
 }
 
 const TEMPLATES = [
-  { id: '1', name: 'Obsidian', desc: 'Dark luxury', url: '/preview/1' },
-  { id: '2', name: 'Clearfield', desc: 'Clean & light', url: '/preview/2' },
-  { id: '3', name: 'Summit', desc: 'Bold modern', url: '/preview/3' },
-  { id: '4', name: 'Ashford', desc: 'Warm classic', url: '/preview/4' },
+  { id: '1', name: 'Option 1', desc: 'Website preview', url: '/preview/1' },
+  { id: '2', name: 'Option 2', desc: 'Website preview', url: '/preview/2' },
+  { id: '3', name: 'Option 3', desc: 'Website preview', url: '/preview/3' },
+  { id: '4', name: 'Option 4', desc: 'Website preview', url: '/preview/4' },
 ];
+
+function createSubmissionId() {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return `sub_${crypto.randomUUID()}`;
+  }
+
+  return `sub_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = typeof reader.result === 'string' ? reader.result : '';
+      const [, base64 = ''] = result.split(',');
+      resolve(base64);
+    };
+    reader.onerror = () => reject(reader.error || new Error('Could not read file'));
+    reader.readAsDataURL(file);
+  });
+}
+
+function getTemplateById(templateId) {
+  return TEMPLATES.find((template) => template.id === templateId) || null;
+}
 
 function TemplateStep({ formData, updateFormData }) {
   return (
@@ -127,7 +151,7 @@ const steps = [
   {
     id: 'template',
     title: 'Choose a Design',
-    description: 'Pick the general page style. Colors will be handled for them automatically.',
+    description: 'Pick the general page style. We will automatically choose matching colors for you.',
     fields: [],
   },
   {
@@ -156,6 +180,7 @@ export default function IntakeApp() {
   const [loading, setLoading] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const [stepError, setStepError] = useState('');
+  const [submissionId] = useState(() => createSubmissionId());
 
   const handleNextRef = useRef(null);
   const loadingRef = useRef(false);
@@ -177,7 +202,37 @@ export default function IntakeApp() {
   const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
   const submitIntake = async () => {
-    const payload = {
+    const submittedAt = new Date().toISOString();
+    const selectedTemplate = getTemplateById(formData.templateId);
+    const logoPayload = formData.logo
+      ? {
+          provided: true,
+          fileName: formData.logo.name,
+          mimeType: formData.logo.type || 'application/octet-stream',
+          sizeBytes: formData.logo.size || 0,
+          base64: await fileToBase64(formData.logo),
+          storage: {
+            provider: 'google_drive',
+            fileId: null,
+            fileName: formData.logo.name,
+            url: null,
+          },
+        }
+      : {
+          provided: false,
+          fileName: '',
+          mimeType: '',
+          sizeBytes: 0,
+          base64: '',
+          storage: {
+            provider: 'google_drive',
+            fileId: null,
+            fileName: '',
+            url: null,
+          },
+        };
+
+    const rawIntake = {
       businessName: formData.businessName || '',
       contactEmail: formData.contactEmail || '',
       phoneNumber: formData.phoneNumber || '',
@@ -189,7 +244,57 @@ export default function IntakeApp() {
       templateId: formData.templateId || '',
       preferredContact: 'Email',
       logoFileName: formData.logo?.name || '',
-      submittedAt: new Date().toISOString(),
+      submittedAt,
+    };
+
+    const payload = {
+      submissionId,
+      createdAt: submittedAt,
+      updatedAt: submittedAt,
+      source: 'website_intake',
+      status: 'submitted',
+      paymentStatus: 'pending',
+      buildStatus: 'not_started',
+      domainStatus: 'not_started',
+      notificationStatus: 'pending',
+      preferredContact: 'Email',
+      customer: {
+        businessName: rawIntake.businessName,
+        contactEmail: rawIntake.contactEmail,
+        phoneNumber: rawIntake.phoneNumber,
+        businessAddress: rawIntake.businessAddress,
+        serviceArea: rawIntake.serviceArea,
+      },
+      website: {
+        domains: [rawIntake.domain1, rawIntake.domain2, rawIntake.domain3].filter(Boolean),
+        template: selectedTemplate
+          ? {
+              id: selectedTemplate.id,
+              name: selectedTemplate.name,
+              description: selectedTemplate.desc,
+              previewUrl: selectedTemplate.url,
+            }
+          : null,
+      },
+      assets: {
+        logo: logoPayload,
+      },
+      stripe: {
+        checkoutSessionId: null,
+        customerId: null,
+        subscriptionId: null,
+        paymentIntentId: null,
+        clientReferenceId: submissionId,
+        customerEmailPrefill: rawIntake.contactEmail,
+      },
+      automation: {
+        buildStartedAt: null,
+        buildCompletedAt: null,
+        deployedAt: null,
+        liveAt: null,
+        textSentAt: null,
+      },
+      rawIntake,
     };
 
     for (let attempt = 1; attempt <= INTAKE_MAX_ATTEMPTS; attempt += 1) {
@@ -208,8 +313,9 @@ export default function IntakeApp() {
           throw new Error(`Webhook responded with ${response.status}`);
         }
 
+        const result = await response.json();
         clearTimeout(timeoutId);
-        return;
+        return result;
       } catch (error) {
         clearTimeout(timeoutId);
         if (attempt === INTAKE_MAX_ATTEMPTS) {
@@ -232,11 +338,12 @@ export default function IntakeApp() {
     setLoading(true);
 
     try {
-      await submitIntake();
+      const result = await submitIntake();
+      if (!result?.checkoutUrl) {
+        throw new Error('Checkout URL missing from intake response');
+      }
 
-      const params = new URLSearchParams();
-      if (formData.contactEmail) params.set('prefilled_email', formData.contactEmail);
-      window.location.href = `${STRIPE_PAYMENT_LINK}?${params.toString()}`;
+      window.location.href = result.checkoutUrl;
     } catch (error) {
       console.error('Intake submit failed:', error);
       setSubmitError('Could not submit your details right now. Please check your connection and try again.');
