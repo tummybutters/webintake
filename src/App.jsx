@@ -3,6 +3,12 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Check, Upload } from 'lucide-react';
 
+const STRIPE_PAYMENT_LINK = 'https://buy.stripe.com/4gMeVcbaLbU63cD0005AQ01';
+const INTAKE_WEBHOOK_URL = import.meta.env.VITE_INTAKE_WEBHOOK_URL;
+const INTAKE_TIMEOUT_MS = 5000;
+const INTAKE_RETRY_DELAY_MS = 400;
+const INTAKE_MAX_ATTEMPTS = 2;
+
 function SuccessPage() {
     return (
         <div className="root-wrapper">
@@ -271,22 +277,85 @@ function QuizApp() {
     const [formData, setFormData] = useState({});
     const [direction, setDirection] = useState(0);
     const [loading, setLoading] = useState(false);
+    const [submitError, setSubmitError] = useState('');
 
     const currentStep = steps[currentStepIdx];
     const progress = ((currentStepIdx + 1) / steps.length) * 100;
     const isLastStep = currentStepIdx === steps.length - 1;
 
-    const handleNext = () => {
+    const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+    const submitIntake = async () => {
+        if (!INTAKE_WEBHOOK_URL) {
+            throw new Error('Webhook URL is not configured');
+        }
+
+        const payload = {
+            businessName: formData.businessName || '',
+            contactEmail: formData.contactEmail || '',
+            phoneNumber: formData.phoneNumber || '',
+            businessAddress: formData.businessAddress || '',
+            domain1: formData.domain1 || '',
+            domain2: formData.domain2 || '',
+            domain3: formData.domain3 || '',
+            businessDescription: formData.businessDescription || '',
+            serviceArea: formData.serviceArea || '',
+            primaryColor: formData.primaryColor || '',
+            secondaryColor: formData.secondaryColor || '',
+            preferredContact: formData.preferredContact || '',
+            logoFileName: formData.logo?.name || '',
+            submittedAt: new Date().toISOString(),
+        };
+
+        for (let attempt = 1; attempt <= INTAKE_MAX_ATTEMPTS; attempt += 1) {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), INTAKE_TIMEOUT_MS);
+
+            try {
+                const response = await fetch(INTAKE_WEBHOOK_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                    signal: controller.signal,
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Webhook responded with ${response.status}`);
+                }
+
+                clearTimeout(timeoutId);
+                return;
+            } catch (error) {
+                clearTimeout(timeoutId);
+                if (attempt === INTAKE_MAX_ATTEMPTS) {
+                    throw error;
+                }
+                await wait(INTAKE_RETRY_DELAY_MS);
+            }
+        }
+    };
+
+    const handleNext = async () => {
         if (!isLastStep) {
             setDirection(1);
             setCurrentStepIdx(prev => prev + 1);
             return;
         }
 
+        setSubmitError('');
         setLoading(true);
-        const params = new URLSearchParams();
-        if (formData.contactEmail) params.set('prefilled_email', formData.contactEmail);
-        window.location.href = `https://buy.stripe.com/4gMeVcbaLbU63cD0005AQ01?${params.toString()}`;
+
+        try {
+            await submitIntake();
+
+            const params = new URLSearchParams();
+            if (formData.contactEmail) params.set('prefilled_email', formData.contactEmail);
+            window.location.href = `${STRIPE_PAYMENT_LINK}?${params.toString()}`;
+        } catch (error) {
+            console.error('Intake submit failed:', error);
+            setSubmitError('Could not submit your details right now. Please check your connection and try again.');
+            setLoading(false);
+        }
     };
 
     const handlePrev = () => {
@@ -422,9 +491,10 @@ function QuizApp() {
                                 disabled={loading}
                                 className={`nav-next${loading ? ' nav-loading' : ''}`}
                             >
-                                {loading ? 'Processing...' : isLastStep ? 'Submit & Pay →' : 'Continue →'}
+                                {loading ? 'Submitting...' : isLastStep ? 'Submit & Pay →' : 'Continue →'}
                             </button>
                         </div>
+                        {submitError && <div className="checkout-error">{submitError}</div>}
                     </motion.div>
                 </AnimatePresence>
             </div>
