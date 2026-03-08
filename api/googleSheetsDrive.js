@@ -1,4 +1,5 @@
 import { google } from 'googleapis';
+import { Readable } from 'node:stream';
 
 export const SHEET_HEADERS = [
   'submission_id',
@@ -157,6 +158,7 @@ export async function uploadLogoToDrive(logo, submissionId, env) {
   const safeName = extension
     ? `${submissionId}-logo.${extension}`
     : `${submissionId}-logo`;
+  const logoBuffer = Buffer.from(logo.base64, 'base64');
 
   let response;
 
@@ -169,7 +171,7 @@ export async function uploadLogoToDrive(logo, submissionId, env) {
       },
       media: {
         mimeType: logo.mimeType || 'application/octet-stream',
-        body: Buffer.from(logo.base64, 'base64'),
+        body: Readable.from(logoBuffer),
       },
       fields: 'id, webViewLink, webContentLink, name',
     });
