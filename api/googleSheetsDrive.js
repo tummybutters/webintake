@@ -40,10 +40,22 @@ function isPermissionError(error) {
   return status === 401 || status === 403;
 }
 
+function isNotFoundError(error) {
+  const status = error?.code || error?.status || error?.response?.status;
+  return status === 404;
+}
+
 function formatGoogleAccessError(resourceLabel, env, error) {
   const serviceAccount = env.GOOGLE_SERVICE_ACCOUNT_EMAIL || 'the configured Google service account';
   return new Error(
     `${resourceLabel} access denied for ${serviceAccount}. Share the ${resourceLabel.toLowerCase()} with that service account and make sure the Google API is enabled.`,
+    { cause: error instanceof Error ? error : undefined },
+  );
+}
+
+function formatGoogleNotFoundError(resourceLabel, identifier, error) {
+  return new Error(
+    `${resourceLabel} not found for id ${identifier}. Verify the ID in Vercel and make sure the resource still exists.`,
     { cause: error instanceof Error ? error : undefined },
   );
 }
@@ -164,6 +176,7 @@ export async function uploadLogoToDrive(logo, submissionId, env) {
 
   try {
     response = await drive.files.create({
+      supportsAllDrives: true,
       requestBody: {
         name: safeName,
         parents: [folderId],
@@ -178,6 +191,10 @@ export async function uploadLogoToDrive(logo, submissionId, env) {
   } catch (error) {
     if (isPermissionError(error)) {
       throw formatGoogleAccessError('Google Drive folder', env, error);
+    }
+
+    if (isNotFoundError(error)) {
+      throw formatGoogleNotFoundError('Google Drive folder', folderId, error);
     }
 
     throw error;
@@ -216,6 +233,10 @@ export async function appendSubmissionToSheet(submission, env) {
   } catch (error) {
     if (isPermissionError(error)) {
       throw formatGoogleAccessError('Google Sheet', env, error);
+    }
+
+    if (isNotFoundError(error)) {
+      throw formatGoogleNotFoundError('Google Sheet', spreadsheetId, error);
     }
 
     throw error;
