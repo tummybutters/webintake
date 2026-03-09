@@ -1,4 +1,5 @@
-import { appendSubmissionToSheet, uploadLogoToDrive } from './googleSheetsDrive.js';
+import { uploadLogoToBlob } from './blobStorage.js';
+import { appendSubmissionToSheet } from './googleSheetsDrive.js';
 import { createCheckoutSession } from './stripeCheckout.js';
 
 function cloneSubmission(body) {
@@ -36,8 +37,8 @@ function normalizeSubmission(body) {
     sizeBytes: Number(submission.assets.logo.sizeBytes || 0),
     base64: submission.assets.logo.base64 || '',
     storage: {
-      provider: submission.assets.logo.storage.provider || 'google_drive',
-      fileId: submission.assets.logo.storage.fileId || '',
+      provider: submission.assets.logo.storage.provider || 'vercel_blob',
+      pathname: submission.assets.logo.storage.pathname || '',
       fileName: submission.assets.logo.storage.fileName || submission.assets.logo.fileName || '',
       url: submission.assets.logo.storage.url || '',
     },
@@ -56,14 +57,14 @@ export async function processIntakeSubmission(body, env) {
     };
   }
 
-  const logoUpload = await uploadLogoToDrive(submission.assets?.logo, submission.submissionId, env);
+  const logoUpload = await uploadLogoToBlob(submission.assets?.logo, submission.submissionId, env);
 
   submission.assets.logo = {
     ...submission.assets.logo,
     base64: '',
     storage: {
-      provider: 'google_drive',
-      fileId: logoUpload.fileId,
+      provider: 'vercel_blob',
+      pathname: logoUpload.pathname,
       fileName: logoUpload.fileName,
       url: logoUpload.url,
     },
@@ -84,8 +85,8 @@ export async function processIntakeSubmission(body, env) {
       ok: true,
       submissionId: submission.submissionId,
       checkoutUrl: checkoutSession.url,
-      driveFileId: logoUpload.fileId,
-      driveFileUrl: logoUpload.url,
+      logoPathname: logoUpload.pathname,
+      logoUrl: logoUpload.url,
     },
   };
 }

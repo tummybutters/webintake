@@ -230,8 +230,8 @@ export default function IntakeApp() {
           sizeBytes: formData.logo.size || 0,
           base64: await fileToBase64(formData.logo),
           storage: {
-            provider: 'google_drive',
-            fileId: null,
+            provider: 'vercel_blob',
+            pathname: null,
             fileName: formData.logo.name,
             url: null,
           },
@@ -243,8 +243,8 @@ export default function IntakeApp() {
           sizeBytes: 0,
           base64: '',
           storage: {
-            provider: 'google_drive',
-            fileId: null,
+            provider: 'vercel_blob',
+            pathname: null,
             fileName: '',
             url: null,
           },

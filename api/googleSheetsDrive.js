@@ -1,5 +1,4 @@
 import { google } from 'googleapis';
-import { Readable } from 'node:stream';
 
 export const SHEET_HEADERS = [
   'submission_id',
@@ -24,8 +23,8 @@ export const SHEET_HEADERS = [
   'preferred_contact',
   'logo_file_name',
   'logo_mime_type',
-  'logo_drive_file_id',
-  'logo_drive_url',
+  'logo_blob_pathname',
+  'logo_blob_url',
   'stripe_checkout_session_id',
   'stripe_customer_id',
   'stripe_subscription_id',
@@ -71,10 +70,7 @@ function getGoogleAuth(env) {
   return new google.auth.JWT({
     email: clientEmail,
     key: privateKey,
-    scopes: [
-      'https://www.googleapis.com/auth/spreadsheets',
-      'https://www.googleapis.com/auth/drive',
-    ],
+    scopes: ['https://www.googleapis.com/auth/spreadsheets'],
   });
 }
 
@@ -106,7 +102,7 @@ function buildRowValues(submission) {
     submission.preferredContact,
     submission.assets.logo.fileName || '',
     submission.assets.logo.mimeType || '',
-    submission.assets.logo.storage.fileId || '',
+    submission.assets.logo.storage.pathname || '',
     submission.assets.logo.storage.url || '',
     submission.stripe.checkoutSessionId || '',
     submission.stripe.customerId || '',
@@ -148,63 +144,6 @@ async function ensureSheetHeaders(sheets, spreadsheetId, sheetName) {
       values: [SHEET_HEADERS],
     },
   });
-}
-
-export async function uploadLogoToDrive(logo, submissionId, env) {
-  if (!logo?.provided || !logo?.base64) {
-    return {
-      fileId: '',
-      fileName: '',
-      url: '',
-    };
-  }
-
-  const folderId = env.GOOGLE_DRIVE_FOLDER_ID;
-  if (!folderId) {
-    throw new Error('GOOGLE_DRIVE_FOLDER_ID is not configured');
-  }
-
-  const auth = getGoogleAuth(env);
-  const drive = google.drive({ version: 'v3', auth });
-  const extension = logo.fileName.includes('.') ? logo.fileName.split('.').pop() : '';
-  const safeName = extension
-    ? `${submissionId}-logo.${extension}`
-    : `${submissionId}-logo`;
-  const logoBuffer = Buffer.from(logo.base64, 'base64');
-
-  let response;
-
-  try {
-    response = await drive.files.create({
-      supportsAllDrives: true,
-      requestBody: {
-        name: safeName,
-        parents: [folderId],
-        mimeType: logo.mimeType || 'application/octet-stream',
-      },
-      media: {
-        mimeType: logo.mimeType || 'application/octet-stream',
-        body: Readable.from(logoBuffer),
-      },
-      fields: 'id, webViewLink, webContentLink, name',
-    });
-  } catch (error) {
-    if (isPermissionError(error)) {
-      throw formatGoogleAccessError('Google Drive folder', env, error);
-    }
-
-    if (isNotFoundError(error)) {
-      throw formatGoogleNotFoundError('Google Drive folder', folderId, error);
-    }
-
-    throw error;
-  }
-
-  return {
-    fileId: response.data.id || '',
-    fileName: response.data.name || safeName,
-    url: response.data.webViewLink || response.data.webContentLink || '',
-  };
 }
 
 export async function appendSubmissionToSheet(submission, env) {
