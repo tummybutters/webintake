@@ -170,7 +170,7 @@ const steps = [
   {
     id: 'template',
     title: 'Choose a Design',
-    description: 'Pick the general page style. We will automatically choose matching colors for you.',
+    description: 'We start with a strong template, then customize the content, photography, structure, and details so it feels fully yours.',
     fields: [],
   },
   {
