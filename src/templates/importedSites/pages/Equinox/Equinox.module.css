@@ -420,8 +420,9 @@ h1, h2, h3, .logo, .largeText, .brandBadge {
   .nav { padding: 1.5rem 2rem; }
   .navItems { display: none; }
   .contactBtn { display: none; }
-  .hero { padding: 9rem 2rem 3rem; }
-  .heroContent { padding-left: 0; padding-top: 1.5rem; padding-bottom: 3rem; max-width: 100%; transform: none; }
+  .hero { padding: 10.5rem 2rem 3rem; }
+  .heroContent { padding-left: 0; padding-top: 0; padding-bottom: 3rem; max-width: 100%; transform: none; }
+  .heroEyebrow { display: none; }
   .heroContent h1 { font-size: 3.2rem; }
   .container { padding: 0 2rem; }
   .vision, .domains { padding: 6rem 0; }
